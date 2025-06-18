@@ -83,4 +83,3 @@ Abra uma issue ou envie um pull request com ideias, melhorias ou correções.
 Este projeto está sob a licença [MIT](LICENSE).
 
 ---
-
