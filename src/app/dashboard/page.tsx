@@ -280,74 +280,7 @@ export default function DashboardPage() {
                 </Button>
               )}
             </CardContent>
-          </Card>
-
-          {/* Daily Content Preview */}
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Prévia do Conteúdo Diário</CardTitle>
-              <CardDescription>Exemplo do que você recebe no WhatsApp</CardDescription>
-            </CardHeader>
-
-            <CardContent>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-green-500 rounded-full p-2">
-                    <Heart className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-green-800 mb-2">🌅 Conversa com Deus</p>
-
-                    {profile.plan_type === "premium" ? (
-                      <div className="space-y-3 text-sm text-green-700">
-                        <div>
-                          <p className="font-medium">📖 Versículo do Dia:</p>
-                          <p className="italic">
-                            "Porque eu bem sei os pensamentos que tenho a vosso respeito, diz o Senhor; pensamentos de
-                            paz e não de mal, para vos dar o fim que esperais." - Jeremias 29:11
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="font-medium">🙏 Oração:</p>
-                          <p>
-                            Senhor, obrigado por seus planos perfeitos para minha vida. Ajude-me a confiar em Ti em
-                            todos os momentos...
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="font-medium">💭 Reflexão:</p>
-                          <p>
-                            Deus tem planos específicos para cada um de nós. Mesmo quando não entendemos o caminho,
-                            podemos descansar na certeza de que Ele nos ama e quer o melhor...
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 text-sm text-green-700">
-                        <div>
-                          <p className="font-medium">📖 Versículo do Dia:</p>
-                          <p className="italic">
-                            "Porque eu bem sei os pensamentos que tenho a vosso respeito, diz o Senhor" - Jeremias 29:11
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="font-medium">🙏 Oração Simples:</p>
-                          <p>Senhor, obrigado por cuidar de mim. Amém.</p>
-                        </div>
-
-                        <p className="text-xs text-green-600 mt-3">
-                          ⭐ Upgrade para Premium e receba conteúdo completo!
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          </Card>         
         </div>
       </div>
     </div>
