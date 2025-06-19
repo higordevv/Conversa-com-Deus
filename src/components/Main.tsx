@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Button } from "@components/ui/Button"
+import { Button } from "@components/ui/"
 import { Heart, MessageCircle, Calendar } from "lucide-react"
 
 export default function Main() {
@@ -35,7 +35,7 @@ export default function Main() {
 
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
           <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
-            <Link href="/auth">Começar Gratuitamente</Link>
+            <Link href="/login">Começar Gratuitamente</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
             <Link href="#pricing">Ver Planos</Link>
