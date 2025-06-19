@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
     if (!userId || !email) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Campos obrigatórios ausentes" },
         { status: 400 }
       );
     }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
-    console.error("Error creating checkout session:", error);
+    console.error("Erro ao criar sessão de checkout:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
