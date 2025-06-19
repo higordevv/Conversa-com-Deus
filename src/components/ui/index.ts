@@ -1,4 +1,4 @@
-import { Button, ButtonProps, buttonVariants } from "./Button";
+import { Button, ButtonProps, buttonVariants } from "./button";
 import {
   Card,
   CardContent,
@@ -10,9 +10,11 @@ import {
 import { Input } from "./input";
 import { Label } from "./label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
-
+import { Badge, BadgeProps, badgeVariants } from "./badge";
 export {
   Button,
+  Badge,
+  badgeVariants,
   buttonVariants,
   Card,
   CardContent,
@@ -27,4 +29,4 @@ export {
   TabsList,
   TabsTrigger,
 };
-export type { ButtonProps };
+export type { ButtonProps, BadgeProps };
