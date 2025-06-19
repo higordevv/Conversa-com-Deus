@@ -52,11 +52,8 @@ export async function POST(request: NextRequest) {
       sent_at: new Date().toISOString(),
     }
 
-    const { error: dbError } = await supabase.from("daily_messages").insert(messageData)
+    await supabase.from("daily_messages").insert(messageData)
 
-    if (dbError) {
-      console.error("Erro ao salvar mensagem de boas-vindas no banco de dados:", dbError)
-    }
 
     return NextResponse.json({
       success: messageResult.success,
@@ -128,7 +125,6 @@ async function sendWhatsAppMessage(
     if (response.ok && result.success) {
       return { success: true, messageId: result.messageId }
     } else {
-      console.error("Erro Z-API:", result)
       return { success: false }
     }
   } catch (error) {
