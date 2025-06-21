@@ -1,158 +1,77 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { supabase } from "@lib/supabase"
-import {  Button,Card, CardContent, CardDescription, CardHeader, CardTitle, Badge  } from "@components/ui/"
-import { Heart, User, Phone, CreditCard, LogOut, Crown } from "lucide-react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { useEffect, useState } from "react";
+import {
+  Button,
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@components/ui/";
+import { Heart, CreditCard, LogOut, Shield, X} from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-interface Profile {
-  id: string
-  email: string
-  whatsapp_number: string
-  plan_type: "free" | "premium"
-  subscription_status: string
+interface DashboardUser {
+  id: string;
+  email: string;
+  whatsapp_number: string;
+  plan_type: "free" | "premium";
+  is_admin: boolean;
 }
 
 export default function DashboardPage() {
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [user, setUser] = useState<DashboardUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    getProfile()
-  }, [])
+    loadUser();
+  }, []);
 
-  const getProfile = async () => {
+  const loadUser = () => {
     try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error("Session error:", sessionError)
-        router.push("/login")
-        return
-      }
-
-      if (!session?.user) {
-        console.log("No active session found")
-        router.push("/login")
-        return
-      }
-
-      const user = session.user
-
-      const { data, error, status } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
-
-      if (error) {
-        console.error("Supabase error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        })
-
-        if (error.code === "42P01" || error.message?.includes("relation") || error.message?.includes("table")) {
-          alert("Database não configurado. Execute o script SQL primeiro.")
-          return
-        }
-
-        console.warn("Database error, but continuing...")
-      }
-
-      if (!data) {
-        console.log("Creating new profile for user:", user.id)
-
-        const newProfileData = {
-          id: user.id,
-          email: user.email || "",
-          whatsapp_number: user.user_metadata?.whatsapp_number || "",
-          plan_type: "free" as const,
-          subscription_status: "inactive",
-        }
-
-        const { data: newProfile, error: createError } = await supabase
-          .from("profiles")
-          .insert(newProfileData)
-          .select()
-          .single()
-
-        if (createError) {
-          console.error("Error creating profile:", createError)
-
-          console.log("Using temporary profile data")
-          setProfile({
-            id: user.id,
-            email: user.email || "",
-            whatsapp_number: user.user_metadata?.whatsapp_number || "",
-            plan_type: "free",
-            subscription_status: "inactive",
-          })
-          return
-        }
-
-        setProfile(newProfile)
+      const userData = localStorage.getItem("devotional_user");
+      if (userData) {
+        setUser(JSON.parse(userData));
       } else {
-        setProfile(data)
+        router.push("/login");
       }
-    } catch (error: any) {
-      console.error("Unexpected error in getProfile:", error)
-
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (user) {
-          console.log("Using fallback profile data")
-          setProfile({
-            id: user.id,
-            email: user.email || "",
-            whatsapp_number: user.user_metadata?.whatsapp_number || "",
-            plan_type: "free",
-            subscription_status: "inactive",
-          })
-          return
-        }
-      } catch (fallbackError) {
-        console.error("Fallback also failed:", fallbackError)
-      }
-
-      alert("Erro ao carregar dados. Tente fazer login novamente.")
-      router.push("/login")
+    } catch (error) {
+      console.error("Error loading user:", error);
+      router.push("/login");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-  }
+  const handleSignOut = () => {
+    localStorage.removeItem("devotional_user");
+    router.push("/");
+  };
 
   const handleUpgrade = async () => {
-    if (!profile) return
+    if (!user) return;
 
     try {
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: profile.id,
-          email: profile.email,
+          userId: user.id,
+          email: user.email,
         }),
-      })
+      });
 
-      const { url } = await response.json()
-      window.location.href = url
+      const { url } = await response.json();
+      window.location.href = url;
     } catch (error) {
-      console.error("Error creating checkout session:", error)
+      console.error("Error creating checkout session:", error);
+      alert("Erro ao processar pagamento");
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -162,39 +81,10 @@ export default function DashboardPage() {
           <p className="text-gray-600">Carregando...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  if (!profile && !loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Configuração Necessária</CardTitle>
-            <CardDescription>Parece que o sistema ainda não foi configurado completamente</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button asChild className="w-full">
-              <Link href="/setup">Ir para Configuração</Link>
-            </Button>
-            <Button variant="outline" onClick={() => window.location.reload()} className="w-full">
-              Tentar Novamente
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Erro ao carregar perfil</p>
-        </div>
-      </div>
-    )
-  }
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -205,40 +95,59 @@ export default function DashboardPage() {
               <Heart className="h-8 w-8 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Conversa com Deus</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Conversa com Deus
+              </h1>
               <p className="text-gray-600">Seu painel pessoal</p>
             </div>
           </div>
 
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
-          </Button>
+          <div className="flex items-center gap-3">
+            {user.is_admin && (
+              <Button asChild variant="outline">
+                <Link href="/admin">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Admin
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Info */}
+        <div className="flex flex-col gap-5 md:max-w-xl m-auto">
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+                <Heart className="h-5 w-5" />
                 Informações do Perfil
               </CardTitle>
-              <CardDescription>Seus dados pessoais e informações da conta</CardDescription>
+              <CardDescription>
+                Seus dados pessoais e informações da conta
+              </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Email</label>
-                  <p className="text-gray-900 bg-gray-50 p-2 rounded">{profile.email}</p>
+                  <label className="text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <p className="text-gray-900 bg-gray-50 p-2 rounded">
+                    {user.email}
+                  </p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700">WhatsApp</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    WhatsApp
+                  </label>
                   <p className="text-gray-900 bg-gray-50 p-2 rounded flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    {profile.whatsapp_number}
+                    <Heart className="h-4 w-4" />
+                    {user.whatsapp_number}
                   </p>
                 </div>
               </div>
@@ -255,34 +164,44 @@ export default function DashboardPage() {
 
             <CardContent className="space-y-4">
               <div className="text-center">
-                {profile.plan_type === "premium" ? (
+                {user.plan_type === "premium" ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-center gap-2">
-                      <Crown className="h-6 w-6 text-yellow-500" />
+                      <Heart className="h-6 w-6 text-yellow-500" />
                       <Badge variant="default" className="bg-yellow-500">
                         Premium
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-600">Você tem acesso completo a todos os recursos</p>
+                    <p className="text-sm text-gray-600">
+                      Você tem acesso completo a todos os recursos
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <Badge variant="secondary">Gratuito</Badge>
-                    <p className="text-sm text-gray-600">Conteúdo limitado diário</p>
+                    <p className="text-sm text-gray-600">
+                      Conteúdo limitado diário
+                    </p>
                   </div>
                 )}
               </div>
 
-              {profile.plan_type === "free" && (
-                <Button onClick={handleUpgrade} className="w-full">
-                  <Crown className="h-4 w-4 mr-2" />
+              {user.plan_type === "free" && (
+                <Button onClick={handleUpgrade} className="w-full" >
+                  <Heart className="h-4 w-4 mr-2" />
                   Upgrade para Premium
                 </Button>
               )}
+              {user.plan_type === "premium" && (
+                <Button onClick={handleUpgrade} className="w-full" variant="destructive">
+                  <X className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+              )}
             </CardContent>
-          </Card>         
+          </Card>
         </div>
       </div>
     </div>
-  )
+  );
 }
