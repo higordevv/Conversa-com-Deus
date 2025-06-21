@@ -1,131 +1,181 @@
 "use client";
 
 import type React from "react";
+
 import { useState } from "react";
 import { supabase } from "@lib/supabase";
-
 import {
   Button,
-  Input,
   Label,
+  Input,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  ToastContainer,
+  toast,
+  Slide,
 } from "@components/ui/";
+
+import {
+  Heart,
+  ArrowLeft,
+  MessageCircle,
+  Loader2,
+  CheckCircle,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Heart, ArrowLeft, MessageCircle } from "lucide-react";
-import Link from "next/link";
+type AuthMode = "phone-check" | "login" | "signup";
 
-export default function Login() {
+export default function AuthPage() {
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<AuthMode>("phone-check");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [firstName, setFirstName] = useState("");
+  const [existingUser, setExistingUser] = useState<any>(null);
   const router = useRouter();
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const formatPhoneNumber = (phone: string): string => {
+    const cleanPhone = phone.replace(/\D/g, "");
+    return cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+  };
+
+  const handlePhoneCheck = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!whatsappNumber.trim()) return;
+
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            whatsapp_number: whatsappNumber,
-            first_name: firstName,
-          },
-        },
+      const response = await fetch("/api/check-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: whatsappNumber }),
       });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      if (data.user) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const { error: profileError } = await supabase.from("profiles").upsert(
-          {
-            id: data.user.id,
-            email,
-            whatsapp_number: whatsappNumber,
-            plan_type: "free",
-            subscription_status: "inactive",
-          },
-          {
-            onConflict: "id",
-          }
-        );
-
-        if (profileError) {
-          console.error("Profile creation error:", profileError);
-        }
-
-        try {
-          const welcomeResponse = await fetch("/api/send-welcome-message", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId: data.user.id,
-              whatsappNumber: whatsappNumber,
-              userName: firstName,
-            }),
-          });
-
-          const welcomeResult = await welcomeResponse.json();
-
-          if (welcomeResult.success) {
-            console.log("Welcome message sent successfully");
-          } else {
-            console.error(
-              "Failed to send welcome message:",
-              welcomeResult.message
-            );
-          }
-        } catch (welcomeError) {
-          console.error("Error sending welcome message:", welcomeError);
-        }
-
-        alert(
-          "Conta criada com sucesso! Verifique seu email para confirmar e aguarde sua mensagem de boas-vindas no WhatsApp!"
-        );
-        router.push("/dashboard");
+      if (result.exists) {
+        setExistingUser(result.profile);
+        setMode("login");
+      } else {
+        setMode("signup");
       }
     } catch (error: any) {
-      alert(error.message);
+      alert(error.message || "Erro ao verificar número");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleLogin = async () => {
+    if (!existingUser) return;
+    setLoading(true);
+    try {
+      localStorage.setItem(
+        "devotional_user",
+        JSON.stringify({
+          id: existingUser.id,
+          email: existingUser.email,
+          whatsapp_number: existingUser.whatsapp_number,
+          plan_type: existingUser.plan_type,
+          is_admin: existingUser.is_admin,
+        })
+      );
+
+      router.push("/dashboard");
+    } catch (error: any) {
+      toast(error.message || "Erro ao fazer login", {
+        position: "bottom-center",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: 0,
+        theme: "dark",
+        transition: Slide,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const formattedPhone = formatPhoneNumber(whatsappNumber);
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("profiles")
+        .insert({
+          email,
+          whatsapp_number: formattedPhone,
+          plan_type: "free",
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error("Este email já está cadastrado");
+        }
+        throw error;
+      }
+
+      try {
+        await fetch("/api/send-welcome-message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: data.id,
+            whatsappNumber: formattedPhone,
+            email: email,
+          }),
+        });
+      } catch (welcomeError) {
+        console.error("Welcome message failed:", welcomeError);
+      }
+
+      localStorage.setItem(
+        "devotional_user",
+        JSON.stringify({
+          id: data.id,
+          email: data.email,
+          whatsapp_number: data.whatsapp_number,
+          plan_type: data.plan_type,
+          is_admin: data.is_admin,
+        })
+      );
 
       router.push("/dashboard");
     } catch (error: any) {
-      alert(error.message);
+      toast(error.message || "Erro ao criar conta", {
+        position: "bottom-center",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: 0,
+        theme: "dark",
+        transition: Slide,
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetFlow = () => {
+    setMode("phone-check");
+    setWhatsappNumber("");
+    setEmail("");
+    setExistingUser(null);
   };
 
   return (
@@ -149,119 +199,147 @@ export default function Login() {
           <h1 className="text-2xl font-bold text-gray-900">
             Conversa com Deus
           </h1>
-          <p className="text-gray-600">Entre ou crie sua conta</p>
+          <p className="text-gray-600">
+            {mode === "phone-check" && "Entre com seu WhatsApp"}
+            {mode === "login" && "Bem-vindo de volta!"}
+            {mode === "signup" && "Comece sua jornada espiritual"}
+          </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Acesso à Plataforma</CardTitle>
+            <CardTitle>
+              {mode === "phone-check" && "Entrar ou Criar Conta"}
+              {mode === "login" && "Login"}
+              {mode === "signup" && "Criar Conta"}
+            </CardTitle>
             <CardDescription>
-              Entre com sua conta ou crie uma nova para começar
+              {mode === "phone-check" && "Digite seu WhatsApp para continuar"}
+              {mode === "login" &&
+                `Olá! Encontramos sua conta: ${existingUser?.email}`}
+              {mode === "signup" &&
+                "Agora precisamos do seu email para criar sua conta"}
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Entrar</TabsTrigger>
-                <TabsTrigger value="signup">Criar Conta</TabsTrigger>
-              </TabsList>
+            {mode === "phone-check" && (
+              <form onSubmit={handlePhoneCheck} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">WhatsApp</Label>
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    placeholder="(11) 99999-9999"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <MessageCircle className="h-3 w-3" />
+                    Verificaremos se você já tem uma conta
+                  </p>
+                </div>
 
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    "Continuar"
+                  )}
+                </Button>
+              </form>
+            )}
+
+            {mode === "login" && (
+              <div className="space-y-4">
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="font-medium">Conta encontrada!</span>
                   </div>
+                  <p className="text-sm text-green-600 mt-1">
+                    WhatsApp: {whatsappNumber}
+                  </p>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Senha</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="Sua senha"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
+                <Button
+                  onClick={handleLogin}
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Entrando...
+                    </>
+                  ) : (
+                    "Entrar na Minha Conta"
+                  )}
+                </Button>
 
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Entrando..." : "Entrar"}
-                  </Button>
-                </form>
-              </TabsContent>
+                <Button
+                  variant="outline"
+                  onClick={resetFlow}
+                  className="w-full"
+                >
+                  Usar outro número
+                </Button>
+              </div>
+            )}
 
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="first-name">Nome</Label>
-                    <Input
-                      id="first-name"
-                      type="text"
-                      placeholder="Seu primeiro nome"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                    />
-                  </div>
+            {mode === "signup" && (
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp-display">WhatsApp</Label>
+                  <Input
+                    id="whatsapp-display"
+                    type="tel"
+                    value={whatsappNumber}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="whatsapp">WhatsApp</Label>
-                    <Input
-                      id="whatsapp"
-                      type="tel"
-                      placeholder="(11) 99999-9999"
-                      value={whatsappNumber}
-                      onChange={(e) => setWhatsappNumber(e.target.value)}
-                      required
-                    />
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      <MessageCircle className="h-3 w-3" />
-                      Você receberá uma mensagem de boas-vindas
-                    </p>
-                  </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Criando conta...
+                    </>
+                  ) : (
+                    "Criar Conta"
+                  )}
+                </Button>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Senha</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Crie uma senha"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Criando conta..." : "Criar Conta"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                <Button
+                  variant="outline"
+                  onClick={resetFlow}
+                  className="w-full"
+                >
+                  Voltar
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
+      <ToastContainer />
     </div>
   );
 }

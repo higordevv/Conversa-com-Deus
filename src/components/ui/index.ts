@@ -10,12 +10,17 @@ import {
 import { Input } from "./input";
 import { Label } from "./label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
+ import { ToastContainer, toast , Slide} from 'react-toastify';
 import { Badge, BadgeProps, badgeVariants } from "./badge";
+
 export {
   Button,
   Badge,
+  ToastContainer,
+  toast,
   badgeVariants,
   buttonVariants,
+  Slide,
   Card,
   CardContent,
   CardDescription,

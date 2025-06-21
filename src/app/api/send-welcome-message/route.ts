@@ -1,32 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@lib/supabase"
 
-const welcomeVerses = [
-  {
-    text: "Porque eu bem sei os pensamentos que tenho a vosso respeito, diz o Senhor; pensamentos de paz e não de mal, para vos dar o fim que esperais.",
-    reference: "Jeremias 29:11",
-  },
-  {
-    text: "Tudo posso naquele que me fortalece.",
-    reference: "Filipenses 4:13",
-  },
-  {
-    text: "O Senhor é o meu pastor; nada me faltará.",
-    reference: "Salmos 23:1",
-  },
-  {
-    text: "Entrega o teu caminho ao Senhor; confia nele, e ele o fará.",
-    reference: "Salmos 37:5",
-  },
-  {
-    text: "E sabemos que todas as coisas contribuem juntamente para o bem daqueles que amam a Deus.",
-    reference: "Romanos 8:28",
-  },
-  {
-    text: "Não temas, porque eu sou contigo; não te assombres, porque eu sou o teu Deus.",
-    reference: "Isaías 41:10",
-  },
-]
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,9 +12,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerClient()
 
-    const randomVerse = welcomeVerses[Math.floor(Math.random() * welcomeVerses.length)]
+    
 
-    const welcomeMessage = generateWelcomeMessage(userName || "amigo(a)", randomVerse)
+    const welcomeMessage = generateWelcomeMessage(userName || "amigo(a)")
 
     const messageResult = await sendWhatsAppMessage(whatsappNumber, welcomeMessage)
 
@@ -66,28 +40,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateWelcomeMessage(userName: string, verse: { text: string; reference: string }): string {
+function generateWelcomeMessage(userName: string): string {
   return `🙏 *Bem-vindo(a) à Conversa com Deus!*
 
-Olá ${userName}! 
+  Olá ${userName}! 
 
-Que alegria ter você conosco! A partir de agora, você receberá mensagens diárias de inspiração e crescimento espiritual.
+  Que alegria ter você conosco! A partir de agora, você receberá mensagens diárias de inspiração e crescimento espiritual.
+  ✨ *Você agora faz parte da Conversa com Deus!*
 
-📖 *Versículo de Boas-Vindas:*
-"${verse.text}" - ${verse.reference}
+  Todos os dias você receberá:
+  • Versículos bíblicos inspiradores
+  • Orações especiais
+  • Reflexões para seu crescimento espiritual
 
-✨ *Você agora faz parte da Conversa com Deus!*
+  🌅 Sua primeira mensagem diária chegará amanhã pela manhã!
 
-Todos os dias você receberá:
-• Versículos bíblicos inspiradores
-• Orações especiais
-• Reflexões para seu crescimento espiritual
+  Que Deus abençoe sua jornada conosco! 🙏❤️
 
-🌅 Sua primeira mensagem diária chegará amanhã pela manhã!
-
-Que Deus abençoe sua jornada conosco! 🙏❤️
-
-_Para upgrade e conteúdo completo, acesse seu painel no site._`
+  _Para upgrade e conteúdo completo, acesse seu painel no site._`
 }
 
 // Function to integrate with Z-API
@@ -107,7 +77,7 @@ async function sendWhatsAppMessage(
       return { success: true, messageId: `sim_${Date.now()}` }
     }
 
-    const response = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
+    const response = await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-image`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -116,7 +86,9 @@ async function sendWhatsAppMessage(
       },
       body: JSON.stringify({
         phone: formattedPhone,
-        message: message,
+        image: "https://i.pinimg.com/736x/c5/0e/56/c50e5640e0ea62b3bcceaae293ecafcd.jpg",
+        caption: message,
+        viewOnce: false
       }),
     })
 
